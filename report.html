@@ -84,7 +84,8 @@
 let benchmarkDatabase = [];
 let publicMetrics = [];
 let latestReport = null;
-let cipChart = null;
+let costPerCreditChart = null;
+let costPerFacultyChart = null;
 
 function formatCurrency(value) {
   if (value === null || value === undefined || isNaN(value)) {
@@ -289,20 +290,40 @@ function generatePreview() {
     </table>
 
     <div class="chart-panel">
-      <h3>All public records for selected CIP code</h3>
+      <h3>Cost per credit hour by public record</h3>
       <p>
-        This plot shows all public records for CIP <strong>${latestReport.cipCode}</strong>
-        in reporting year <strong>${latestReport.year}</strong>. Records in the selected
-        Carnegie classification are highlighted. If department values are entered, your
-        department is also added to the plot.
+        This plot shows cost per credit hour for all public records in CIP
+        <strong>${latestReport.cipCode}</strong> for reporting year
+        <strong>${latestReport.year}</strong>.
       </p>
 
       <div class="chart-container">
-        <canvas id="cipDataChart"></canvas>
+        <canvas id="costPerCreditChart"></canvas>
       </div>
 
       <p class="chart-note">
-        Bars show cost per credit hour. The line shows instructional cost per faculty member.
+        Blue bars are records in the selected Carnegie classification. Gray bars are
+        other Carnegie classifications for the same CIP code. Orange indicates your
+        entered department value, if provided.
+      </p>
+    </div>
+
+    <div class="chart-panel">
+      <h3>Instructional cost per faculty member by public record</h3>
+      <p>
+        This plot shows instructional cost per faculty member for all public records in CIP
+        <strong>${latestReport.cipCode}</strong> for reporting year
+        <strong>${latestReport.year}</strong>.
+      </p>
+
+      <div class="chart-container">
+        <canvas id="costPerFacultyChart"></canvas>
+      </div>
+
+      <p class="chart-note">
+        Blue bars are records in the selected Carnegie classification. Gray bars are
+        other Carnegie classifications for the same CIP code. Orange indicates your
+        entered department value, if provided.
       </p>
     </div>
 
@@ -312,20 +333,10 @@ function generatePreview() {
     </p>
   `;
 
-  renderCipChart(allCipRows, latestReport);
+  renderCipCharts(allCipRows, latestReport);
 }
 
-function renderCipChart(allCipRows, report) {
-  const canvas = document.getElementById("cipDataChart");
-
-  if (!canvas) {
-    return;
-  }
-
-  if (cipChart) {
-    cipChart.destroy();
-  }
-
+function buildChartRows(allCipRows, report) {
   let chartRows = allCipRows.map(row => ({
     label: `${row.institution_name || "Institution"} — ${row.department_name || "Department"} (${row.carnegie_classification || "Carnegie not listed"})`,
     costPerCreditHour: Number(row.cost_per_credit_hour),
@@ -346,43 +357,55 @@ function renderCipChart(allCipRows, report) {
     });
   }
 
-  chartRows = chartRows
-    .filter(row => !isNaN(row.costPerCreditHour) && !isNaN(row.costPerFaculty))
-    .sort((a, b) => a.costPerCreditHour - b.costPerCreditHour);
+  return chartRows.filter(row =>
+    !isNaN(row.costPerCreditHour) &&
+    !isNaN(row.costPerFaculty)
+  );
+}
 
-  const labels = chartRows.map(row => row.label);
+function getBarColor(row) {
+  if (row.isUserValue) {
+    return "#f97316";
+  }
 
-  cipChart = new Chart(canvas, {
+  if (row.isSelectedCarnegie) {
+    return "#2563eb";
+  }
+
+  return "#cbd5e1";
+}
+
+function renderCipCharts(allCipRows, report) {
+  const chartRows = buildChartRows(allCipRows, report);
+
+  renderCostPerCreditChart(chartRows, report);
+  renderCostPerFacultyChart(chartRows, report);
+}
+
+function renderCostPerCreditChart(chartRows, report) {
+  const canvas = document.getElementById("costPerCreditChart");
+
+  if (!canvas) {
+    return;
+  }
+
+  if (costPerCreditChart) {
+    costPerCreditChart.destroy();
+  }
+
+  const sortedRows = [...chartRows].sort(
+    (a, b) => a.costPerCreditHour - b.costPerCreditHour
+  );
+
+  costPerCreditChart = new Chart(canvas, {
+    type: "bar",
     data: {
-      labels: labels,
+      labels: sortedRows.map(row => row.label),
       datasets: [
         {
-          type: "bar",
           label: "Cost per credit hour",
-          data: chartRows.map(row => row.costPerCreditHour),
-          yAxisID: "y",
-          backgroundColor: chartRows.map(row => {
-            if (row.isUserValue) {
-              return "#f97316";
-            }
-
-            if (row.isSelectedCarnegie) {
-              return "#2563eb";
-            }
-
-            return "#cbd5e1";
-          })
-        },
-        {
-          type: "line",
-          label: "Instructional cost per faculty member",
-          data: chartRows.map(row => row.costPerFaculty),
-          yAxisID: "y1",
-          borderColor: "#0f172a",
-          backgroundColor: "#0f172a",
-          pointRadius: chartRows.map(row => row.isUserValue ? 6 : 3),
-          pointStyle: chartRows.map(row => row.isUserValue ? "rectRot" : "circle"),
-          tension: 0.25
+          data: sortedRows.map(row => row.costPerCreditHour),
+          backgroundColor: sortedRows.map(row => getBarColor(row))
         }
       ]
     },
@@ -390,32 +413,22 @@ function renderCipChart(allCipRows, report) {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      interaction: {
-        mode: "index",
-        intersect: false
-      },
       plugins: {
         title: {
           display: true,
-          text: `All public records for CIP ${report.cipCode}`
+          text: `Cost per credit hour — CIP ${report.cipCode}`
         },
         subtitle: {
           display: true,
           text: `${report.cipTitle}, ${report.year}`
         },
         legend: {
-          position: "bottom"
+          display: false
         },
         tooltip: {
           callbacks: {
             label: function(context) {
-              const value = context.parsed.y;
-
-              if (context.dataset.label === "Cost per credit hour") {
-                return `Cost per credit hour: ${formatCurrency(value)}`;
-              }
-
-              return `Instructional cost per faculty member: ${formatCurrency(value)}`;
+              return `Cost per credit hour: ${formatCurrency(context.parsed.y)}`;
             }
           }
         }
@@ -429,8 +442,6 @@ function renderCipChart(allCipRows, report) {
           }
         },
         y: {
-          type: "linear",
-          position: "left",
           title: {
             display: true,
             text: "Cost per credit hour"
@@ -440,16 +451,75 @@ function renderCipChart(allCipRows, report) {
               return "$" + Number(value).toLocaleString();
             }
           }
+        }
+      }
+    }
+  });
+}
+
+function renderCostPerFacultyChart(chartRows, report) {
+  const canvas = document.getElementById("costPerFacultyChart");
+
+  if (!canvas) {
+    return;
+  }
+
+  if (costPerFacultyChart) {
+    costPerFacultyChart.destroy();
+  }
+
+  const sortedRows = [...chartRows].sort(
+    (a, b) => a.costPerFaculty - b.costPerFaculty
+  );
+
+  costPerFacultyChart = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: sortedRows.map(row => row.label),
+      datasets: [
+        {
+          label: "Instructional cost per faculty member",
+          data: sortedRows.map(row => row.costPerFaculty),
+          backgroundColor: sortedRows.map(row => getBarColor(row))
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        title: {
+          display: true,
+          text: `Instructional cost per faculty member — CIP ${report.cipCode}`
         },
-        y1: {
-          type: "linear",
-          position: "right",
+        subtitle: {
+          display: true,
+          text: `${report.cipTitle}, ${report.year}`
+        },
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `Instructional cost per faculty member: ${formatCurrency(context.parsed.y)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            autoSkip: false,
+            maxRotation: 65,
+            minRotation: 45
+          }
+        },
+        y: {
           title: {
             display: true,
             text: "Instructional cost per faculty member"
-          },
-          grid: {
-            drawOnChartArea: false
           },
           ticks: {
             callback: function(value) {
@@ -534,15 +604,15 @@ function downloadPdf() {
   const wrappedNote = doc.splitTextToSize(note, 180);
   doc.text(wrappedNote, 14, y);
 
-  const chartCanvas = document.getElementById("cipDataChart");
+  const costPerCreditCanvas = document.getElementById("costPerCreditChart");
 
-  if (chartCanvas) {
-    const chartImage = chartCanvas.toDataURL("image/png", 1.0);
+  if (costPerCreditCanvas) {
+    const costPerCreditImage = costPerCreditCanvas.toDataURL("image/png", 1.0);
 
     doc.addPage();
 
     doc.setFontSize(13);
-    doc.text("All Public Records for Selected CIP Code", 14, 18);
+    doc.text("Cost per Credit Hour by Public Record", 14, 18);
 
     doc.setFontSize(9);
     doc.text(`CIP: ${latestReport.cipCode} - ${latestReport.cipTitle}`, 14, 26);
@@ -550,13 +620,38 @@ function downloadPdf() {
     doc.text(`Selected Carnegie classification: ${latestReport.carnegieClassification}`, 14, 38);
     doc.text(`All records for this CIP code: ${latestReport.nCipRecords}`, 14, 44);
 
-    doc.addImage(chartImage, "PNG", 14, 52, 180, 95);
+    doc.addImage(costPerCreditImage, "PNG", 14, 52, 180, 95);
 
     doc.setFontSize(8);
-    const chartNote =
-      "Bars show cost per credit hour. The line shows instructional cost per faculty member. Blue bars are records in the selected Carnegie classification. Gray bars are other Carnegie classifications for the same CIP code. Orange indicates the entered department value, if provided.";
-    const wrappedChartNote = doc.splitTextToSize(chartNote, 180);
-    doc.text(wrappedChartNote, 14, 155);
+    const creditChartNote =
+      "Bars show cost per credit hour. Blue bars are records in the selected Carnegie classification. Gray bars are other Carnegie classifications for the same CIP code. Orange indicates the entered department value, if provided.";
+    const wrappedCreditChartNote = doc.splitTextToSize(creditChartNote, 180);
+    doc.text(wrappedCreditChartNote, 14, 155);
+  }
+
+  const costPerFacultyCanvas = document.getElementById("costPerFacultyChart");
+
+  if (costPerFacultyCanvas) {
+    const costPerFacultyImage = costPerFacultyCanvas.toDataURL("image/png", 1.0);
+
+    doc.addPage();
+
+    doc.setFontSize(13);
+    doc.text("Instructional Cost per Faculty Member by Public Record", 14, 18);
+
+    doc.setFontSize(9);
+    doc.text(`CIP: ${latestReport.cipCode} - ${latestReport.cipTitle}`, 14, 26);
+    doc.text(`Reporting year: ${latestReport.year}`, 14, 32);
+    doc.text(`Selected Carnegie classification: ${latestReport.carnegieClassification}`, 14, 38);
+    doc.text(`All records for this CIP code: ${latestReport.nCipRecords}`, 14, 44);
+
+    doc.addImage(costPerFacultyImage, "PNG", 14, 52, 180, 95);
+
+    doc.setFontSize(8);
+    const facultyChartNote =
+      "Bars show instructional cost per faculty member. Blue bars are records in the selected Carnegie classification. Gray bars are other Carnegie classifications for the same CIP code. Orange indicates the entered department value, if provided.";
+    const wrappedFacultyChartNote = doc.splitTextToSize(facultyChartNote, 180);
+    doc.text(wrappedFacultyChartNote, 14, 155);
   }
 
   doc.save("open-cost-study-report.pdf");
