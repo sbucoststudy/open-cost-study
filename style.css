@@ -135,3 +135,59 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+.form-panel {
+  background: white;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  margin: 24px 0;
+}
+
+.form-panel label {
+  display: block;
+  font-weight: bold;
+  margin-top: 16px;
+  margin-bottom: 6px;
+}
+
+.form-panel input,
+.form-panel select {
+  width: 100%;
+  max-width: 620px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.report-preview {
+  background: white;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  margin: 24px 0;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0 28px;
+  background: white;
+}
+
+.report-table th,
+.report-table td {
+  border: 1px solid #e2e8f0;
+  padding: 10px;
+  text-align: left;
+}
+
+.report-table th {
+  width: 35%;
+  background: #f8fafc;
+}
+
+.small-note {
+  color: #64748b;
+  font-size: 14px;
+}
