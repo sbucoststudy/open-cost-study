@@ -1,0 +1,95 @@
+name: Public Data Submission
+description: Submit public Open Cost Study data for review and publication.
+title: "[Public Data Submission]: "
+labels:
+  - data submission
+  - public data
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for submitting public data to the Open Cost Study Exchange.
+
+        This is a public submission form. Do not include student-level records,
+        student names, student IDs, employee IDs, Social Security numbers,
+        dates of birth, protected personal information, or any data that your
+        institution is not authorized to release publicly.
+
+  - type: input
+    id: institution_name
+    attributes:
+      label: Institution name
+      description: Enter the full name of the submitting institution.
+      placeholder: Example University
+    validations:
+      required: true
+
+  - type: input
+    id: reporting_year
+    attributes:
+      label: Reporting year
+      description: Enter the fiscal or academic year for this submission.
+      placeholder: 2026
+    validations:
+      required: true
+
+  - type: input
+    id: submitter_name
+    attributes:
+      label: Submitter name
+      description: Enter the name of the person submitting the data.
+      placeholder: Jane Doe
+    validations:
+      required: true
+
+  - type: input
+    id: submitter_email
+    attributes:
+      label: Submitter email
+      description: Enter a public contact email for follow-up questions.
+      placeholder: jane.doe@example.edu
+    validations:
+      required: true
+
+  - type: input
+    id: data_file_link
+    attributes:
+      label: Public data file link
+      description: Paste a public link to the CSV or Excel file. The file must be approved for public release.
+      placeholder: https://example.edu/open-cost-study/submission-2026.csv
+    validations:
+      required: true
+
+  - type: dropdown
+    id: file_type
+    attributes:
+      label: File type
+      description: Select the submitted file type.
+      options:
+        - CSV
+        - Excel
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: submission_notes
+    attributes:
+      label: Submission notes
+      description: Add any notes about methodology, exclusions, caveats, or unusual values.
+      placeholder: This submission excludes non-credit activity and uses CIP-4 discipline rollups.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: public_release_confirmation
+    attributes:
+      label: Public release confirmation
+      description: Confirm that this submission is intended for public release.
+      options:
+        - label: I confirm that the submitted data is approved for public release.
+          required: true
+        - label: I confirm that the submission does not include student-level records or protected personal information.
+          required: true
+        - label: I understand that this issue and the submitted data file link may be visible to the public.
+          required: true
