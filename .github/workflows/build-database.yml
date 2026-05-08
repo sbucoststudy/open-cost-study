@@ -1,0 +1,40 @@
+name: Build public benchmark database
+
+on:
+  push:
+    paths:
+      - "data/raw/**"
+      - "scripts/build_database.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-database:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy
+
+      - name: Build processed benchmark database
+        run: python scripts/build_database.py
+
+      - name: Commit processed files
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add data/processed
+          git commit -m "Update processed benchmark database" || echo "No changes to commit"
+          git push
