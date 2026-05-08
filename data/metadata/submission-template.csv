@@ -1,2 +1,2 @@
-year,institution_name,unitid,fice,sector,carnegie_group,cip,discipline,degree_level,total_sch,organized_class_sections,faculty_fte,direct_instructional_expenditures,cost_per_sch,notes
-2026,Example University,123456,001234,Public,Doctoral Universities,11.01,Computer and Information Sciences,Bachelors,12000,240,18.5,4944000,412,Sample row
+year,institution_name,unitid,carnegie_classification,department_name,cip_code,cip_title,total_sch,faculty_fte,direct_instructional_expenditures,notes
+2026,Example University,123456,Doctoral Universities,Biology,26.0101,Biology/Biological Sciences,12000,18.5,5868000,Sample row
