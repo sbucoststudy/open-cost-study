@@ -1,0 +1,6 @@
+field_name,definition,example
+year,Reporting year,2026
+cip,Classification of Instructional Programs code,11.01
+discipline,Academic discipline name,Computer and Information Sciences
+institutions,Number of institutions in benchmark group,48
+median_cost_per_sch,Median instructional cost per student credit hour,412
