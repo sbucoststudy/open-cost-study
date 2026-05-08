@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Submit by email
+    url: mailto:ssimpon@sbu.edu?subject=Open%20Cost%20Study%20Public%20Data%20Submission
+    about: Submit a public data file by email instead of GitHub.
+  - name: Open Cost Study website
+    url: https://sbucoststudy.github.io/open-cost-study/
+    about: Visit the public Open Cost Study website.
