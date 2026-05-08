@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Generate Report | Open Cost Study Exchange</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <h1>Generate Cost Report</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="methodology.html">Methodology</a>
+      <a href="database.html">Public Database</a>
+      <a href="report.html">Generate Report</a>
+      <a href="submit.html">Submit Data</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="notice">
+    <h2>About this report</h2>
+    <p>
+      This tool generates a public benchmark report using the processed Open Cost Study database.
+      Enter a CIP code and Carnegie classification. To calculate your department's percentile,
+      also enter your department's instructional expenditures, faculty FTE, and student credit hours.
+    </p>
+    <p>
+      Higher percentiles mean higher costs relative to the selected comparison group.
+    </p>
+  </section>
+
+  <section class="form-panel">
+    <h2>Report Inputs</h2>
+
+    <label for="year">Reporting year</label>
+    <select id="year"></select>
+
+    <label for="departmentName">Department name</label>
+    <input id="departmentName" type="text" placeholder="Example: Biology" />
+
+    <label for="cipCode">CIP code</label>
+    <input id="cipCode" type="text" placeholder="Example: 26.0101" list="cipOptions" />
+    <datalist id="cipOptions"></datalist>
+
+    <label for="carnegieClassification">Carnegie classification</label>
+    <input id="carnegieClassification" type="text" placeholder="Example: Doctoral Universities" list="carnegieOptions" />
+    <datalist id="carnegieOptions"></datalist>
+
+    <h3>Your department values</h3>
+    <p>
+      These fields are needed if you want the PDF to show your department's cost values and percentile.
+    </p>
+
+    <label for="directInstructionalExpenditures">Direct instructional expenditures</label>
+    <input id="directInstructionalExpenditures" type="number" min="0" step="1" placeholder="Example: 5868000" />
+
+    <label for="facultyFte">Faculty FTE</label>
+    <input id="facultyFte" type="number" min="0" step="0.01" placeholder="Example: 18.5" />
+
+    <label for="totalSch">Total student credit hours</label>
+    <input id="totalSch" type="number" min="0" step="1" placeholder="Example: 12000" />
+
+    <div class="buttons">
+      <button class="button" onclick="generatePreview()">Preview Report</button>
+      <button class="button secondary" onclick="downloadPdf()">Download PDF</button>
+    </div>
+  </section>
+
+  <section id="reportPreview" class="report-preview">
+    <h2>Report preview will appear here</h2>
+  </section>
+
+</main>
+
+<script>
+let benchmarkDatabase = [];
+let publicMetrics = [];
+let latestReport = null;
+
+function formatCurrency(value) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return "Not available";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined || isNaN(value)) {
+    return "Not available";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function percentileRank(values, selectedValue) {
+  const numericValues = values
+    .map(Number)
+    .filter(value => !isNaN(value))
+    .sort((a, b) => a - b);
+
+  if (!numericValues.length || isNaN(selectedValue)) {
+    return null;
+  }
+
+  const less = numericValues.filter(value => value < selectedValue).length;
+  const equal = numericValues.filter(value => value === selectedValue).length;
+
+  return ((less + 0.5 * equal) / numericValues.length) * 100;
+}
+
+async function loadData() {
+  const benchmarkResponse = await fetch("data/processed/benchmark-database.json");
+  const metricsResponse = await fetch("data/processed/public-institution-metrics.json");
+
+  if (!benchmarkResponse.ok || !metricsResponse.ok) {
+    document.getElementById("reportPreview").innerHTML = `
+      <h2>Database not found</h2>
+      <p>
+        The processed database files are missing. Run the GitHub Actions workflow named
+        <strong>Build public benchmark database</strong>, then reload this page.
+      </p>
+    `;
+    return;
+  }
+
+  benchmarkDatabase = await benchmarkResponse.json();
+  publicMetrics = await metricsResponse.json();
+
+  populateFilters();
+}
+
+function populateFilters() {
+  const yearSelect = document.getElementById("year");
+  const cipOptions = document.getElementById("cipOptions");
+  const carnegieOptions = document.getElementById("carnegieOptions");
+
+  const years = [...new Set(benchmarkDatabase.map(row => row.year))].sort().reverse();
+  const cips = [...new Set(benchmarkDatabase.map(row => `${row.cip_code} — ${row.cip_title}`))].sort();
+  const carnegieGroups = [...new Set(benchmarkDatabase.map(row => row.carnegie_classification))].sort();
+
+  yearSelect.innerHTML = years.map(year => `<option value="${year}">${year}</option>`).join("");
+
+  cipOptions.innerHTML = cips.map(cip => {
+    const code = cip.split(" — ")[0];
+    return `<option value="${code}">${cip}</option>`;
+  }).join("");
+
+  carnegieOptions.innerHTML = carnegieGroups.map(group => {
+    return `<option value="${group}">${group}</option>`;
+  }).join("");
+}
+
+function generatePreview() {
+  const year = document.getElementById("year").value;
+  const departmentName = document.getElementById("departmentName").value.trim();
+  const cipCode = document.getElementById("cipCode").value.trim();
+  const carnegieClassification = document.getElementById("carnegieClassification").value.trim();
+
+  const directInstructionalExpenditures = Number(document.getElementById("directInstructionalExpenditures").value);
+  const facultyFte = Number(document.getElementById("facultyFte").value);
+  const totalSch = Number(document.getElementById("totalSch").value);
+
+  const benchmarkRow = benchmarkDatabase.find(row =>
+    String(row.year) === String(year) &&
+    normalizeText(row.cip_code) === normalizeText(cipCode) &&
+    normalizeText(row.carnegie_classification) === normalizeText(carnegieClassification)
+  );
+
+  const comparisonGroup = publicMetrics.filter(row =>
+    String(row.year) === String(year) &&
+    normalizeText(row.cip_code) === normalizeText(cipCode) &&
+    normalizeText(row.carnegie_classification) === normalizeText(carnegieClassification)
+  );
+
+  if (!benchmarkRow || !comparisonGroup.length) {
+    latestReport = null;
+    document.getElementById("reportPreview").innerHTML = `
+      <h2>No comparison group found</h2>
+      <p>
+        No public benchmark data was found for CIP <strong>${cipCode}</strong>
+        and Carnegie classification <strong>${carnegieClassification}</strong>
+        in year <strong>${year}</strong>.
+      </p>
+    `;
+    return;
+  }
+
+  const hasDepartmentValues =
+    directInstructionalExpenditures > 0 &&
+    facultyFte > 0 &&
+    totalSch > 0;
+
+  let instructionalCostPerFaculty = null;
+  let costPerCreditHour = null;
+  let instructionalCostPerFacultyPercentile = null;
+  let costPerCreditHourPercentile = null;
+
+  if (hasDepartmentValues) {
+    instructionalCostPerFaculty = directInstructionalExpenditures / facultyFte;
+    costPerCreditHour = directInstructionalExpenditures / totalSch;
+
+    instructionalCostPerFacultyPercentile = percentileRank(
+      comparisonGroup.map(row => row.instructional_cost_per_faculty),
+      instructionalCostPerFaculty
+    );
+
+    costPerCreditHourPercentile = percentileRank(
+      comparisonGroup.map(row => row.cost_per_credit_hour),
+      costPerCreditHour
+    );
+  }
+
+  latestReport = {
+    year,
+    departmentName,
+    cipCode,
+    cipTitle: benchmarkRow.cip_title,
+    carnegieClassification,
+    nInstitutions: benchmarkRow.n_institutions,
+    nRecords: benchmarkRow.n_records,
+    hasDepartmentValues,
+    instructionalCostPerFaculty,
+    costPerCreditHour,
+    instructionalCostPerFacultyPercentile,
+    costPerCreditHourPercentile,
+    medianInstructionalCostPerFaculty: benchmarkRow.median_instructional_cost_per_faculty,
+    p25InstructionalCostPerFaculty: benchmarkRow.p25_instructional_cost_per_faculty,
+    p75InstructionalCostPerFaculty: benchmarkRow.p75_instructional_cost_per_faculty,
+    medianCostPerCreditHour: benchmarkRow.median_cost_per_credit_hour,
+    p25CostPerCreditHour: benchmarkRow.p25_cost_per_credit_hour,
+    p75CostPerCreditHour: benchmarkRow.p75_cost_per_credit_hour
+  };
+
+  document.getElementById("reportPreview").innerHTML = `
+    <h2>Open Cost Study Department Cost Report</h2>
+
+    <table class="report-table">
+      <tr><th>Reporting year</th><td>${latestReport.year}</td></tr>
+      <tr><th>Department</th><td>${latestReport.departmentName || "Not provided"}</td></tr>
+      <tr><th>CIP</th><td>${latestReport.cipCode} — ${latestReport.cipTitle}</td></tr>
+      <tr><th>Carnegie classification</th><td>${latestReport.carnegieClassification}</td></tr>
+      <tr><th>Institutions in comparison group</th><td>${latestReport.nInstitutions}</td></tr>
+      <tr><th>Records in comparison group</th><td>${latestReport.nRecords}</td></tr>
+    </table>
+
+    <h3>Instructional cost per faculty member</h3>
+    <table class="report-table">
+      <tr><th>Your department</th><td>${hasDepartmentValues ? formatCurrency(instructionalCostPerFaculty) : "Enter department values to calculate"}</td></tr>
+      <tr><th>25th percentile</th><td>${formatCurrency(latestReport.p25InstructionalCostPerFaculty)}</td></tr>
+      <tr><th>Median</th><td>${formatCurrency(latestReport.medianInstructionalCostPerFaculty)}</td></tr>
+      <tr><th>75th percentile</th><td>${formatCurrency(latestReport.p75InstructionalCostPerFaculty)}</td></tr>
+      <tr><th>Your percentile</th><td>${hasDepartmentValues ? `${formatNumber(instructionalCostPerFacultyPercentile)}th percentile` : "Not calculated"}</td></tr>
+    </table>
+
+    <h3>Cost per credit hour</h3>
+    <table class="report-table">
+      <tr><th>Your department</th><td>${hasDepartmentValues ? formatCurrency(costPerCreditHour) : "Enter department values to calculate"}</td></tr>
+      <tr><th>25th percentile</th><td>${formatCurrency(latestReport.p25CostPerCreditHour)}</td></tr>
+      <tr><th>Median</th><td>${formatCurrency(latestReport.medianCostPerCreditHour)}</td></tr>
+      <tr><th>75th percentile</th><td>${formatCurrency(latestReport.p75CostPerCreditHour)}</td></tr>
+      <tr><th>Your percentile</th><td>${hasDepartmentValues ? `${formatNumber(costPerCreditHourPercentile)}th percentile` : "Not calculated"}</td></tr>
+    </table>
+
+    <p class="small-note">
+      Higher cost percentiles indicate higher costs relative to public submitted records
+      in the same CIP, Carnegie classification, and reporting year.
+    </p>
+  `;
+}
+
+function downloadPdf() {
+  if (!latestReport) {
+    generatePreview();
+  }
+
+  if (!latestReport) {
+    alert("Generate a valid report preview before downloading the PDF.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  let y = 18;
+
+  doc.setFontSize(16);
+  doc.text("Open Cost Study Department Cost Report", 14, y);
+
+  y += 10;
+  doc.setFontSize(10);
+  doc.text(`Reporting year: ${latestReport.year}`, 14, y);
+  y += 7;
+  doc.text(`Department: ${latestReport.departmentName || "Not provided"}`, 14, y);
+  y += 7;
+  doc.text(`CIP: ${latestReport.cipCode} - ${latestReport.cipTitle}`, 14, y);
+  y += 7;
+  doc.text(`Carnegie classification: ${latestReport.carnegieClassification}`, 14, y);
+  y += 7;
+  doc.text(`Institutions in comparison group: ${latestReport.nInstitutions}`, 14, y);
+  y += 7;
+  doc.text(`Records in comparison group: ${latestReport.nRecords}`, 14, y);
+
+  y += 12;
+  doc.setFontSize(13);
+  doc.text("Instructional Cost per Faculty Member", 14, y);
+
+  y += 8;
+  doc.setFontSize(10);
+  doc.text(`Your department: ${latestReport.hasDepartmentValues ? formatCurrency(latestReport.instructionalCostPerFaculty) : "Not calculated"}`, 14, y);
+  y += 7;
+  doc.text(`25th percentile: ${formatCurrency(latestReport.p25InstructionalCostPerFaculty)}`, 14, y);
+  y += 7;
+  doc.text(`Median: ${formatCurrency(latestReport.medianInstructionalCostPerFaculty)}`, 14, y);
+  y += 7;
+  doc.text(`75th percentile: ${formatCurrency(latestReport.p75InstructionalCostPerFaculty)}`, 14, y);
+  y += 7;
+  doc.text(`Your percentile: ${latestReport.hasDepartmentValues ? formatNumber(latestReport.instructionalCostPerFacultyPercentile) + "th percentile" : "Not calculated"}`, 14, y);
+
+  y += 12;
+  doc.setFontSize(13);
+  doc.text("Cost per Credit Hour", 14, y);
+
+  y += 8;
+  doc.setFontSize(10);
+  doc.text(`Your department: ${latestReport.hasDepartmentValues ? formatCurrency(latestReport.costPerCreditHour) : "Not calculated"}`, 14, y);
+  y += 7;
+  doc.text(`25th percentile: ${formatCurrency(latestReport.p25CostPerCreditHour)}`, 14, y);
+  y += 7;
+  doc.text(`Median: ${formatCurrency(latestReport.medianCostPerCreditHour)}`, 14, y);
+  y += 7;
+  doc.text(`75th percentile: ${formatCurrency(latestReport.p75CostPerCreditHour)}`, 14, y);
+  y += 7;
+  doc.text(`Your percentile: ${latestReport.hasDepartmentValues ? formatNumber(latestReport.costPerCreditHourPercentile) + "th percentile" : "Not calculated"}`, 14, y);
+
+  y += 14;
+  doc.setFontSize(9);
+  const note = "Note: Higher cost percentiles indicate higher costs relative to public submitted records in the same CIP, Carnegie classification, and reporting year.";
+  const wrappedNote = doc.splitTextToSize(note, 180);
+  doc.text(wrappedNote, 14, y);
+
+  doc.save("open-cost-study-report.pdf");
+}
+
+loadData();
+</script>
+
+</body>
+</html>
