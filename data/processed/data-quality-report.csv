@@ -1,0 +1,2 @@
+source_file,rows,valid_metric_rows,invalid_metric_rows
+data/raw/2026/sample-cost-submission.csv,7,7,0

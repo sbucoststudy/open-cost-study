@@ -1,0 +1,8 @@
+[
+  {
+    "source_file": "data/raw/2026/sample-cost-submission.csv",
+    "rows": 7,
+    "valid_metric_rows": 7,
+    "invalid_metric_rows": 0
+  }
+]

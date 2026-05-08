@@ -1,0 +1,8 @@
+year,institution_name,unitid,carnegie_classification,department_name,cip_code,cip_title,total_sch,faculty_fte,direct_instructional_expenditures,instructional_cost_per_faculty,cost_per_credit_hour,source_file
+2026,Example University,123456,Doctoral Universities,Biology,26.0101,Biology/Biological Sciences,12000,18.5,5868000,317189.19,489.0,data/raw/2026/sample-cost-submission.csv
+2026,Public Research College,345678,Doctoral Universities,Biology,26.0101,Biology/Biological Sciences,9800,16.4,4704000,286829.27,480.0,data/raw/2026/sample-cost-submission.csv
+2026,Sample State University,234567,Doctoral Universities,Biology,26.0101,Biology/Biological Sciences,15000,23.2,6900000,297413.79,460.0,data/raw/2026/sample-cost-submission.csv
+2026,Example University,123456,Doctoral Universities,Chemistry,40.0501,Chemistry,7000,14.2,4732000,333239.44,676.0,data/raw/2026/sample-cost-submission.csv
+2026,Sample State University,234567,Doctoral Universities,Chemistry,40.0501,Chemistry,8200,15.6,5084000,325897.44,620.0,data/raw/2026/sample-cost-submission.csv
+2026,Metro Public University,567890,Master's Colleges and Universities,Business Administration,52.0201,Business Administration and Management,18500,24.5,5735000,234081.63,310.0,data/raw/2026/sample-cost-submission.csv
+2026,Regional State College,456789,Master's Colleges and Universities,Business Administration,52.0201,Business Administration and Management,22000,28.0,6600000,235714.29,300.0,data/raw/2026/sample-cost-submission.csv
