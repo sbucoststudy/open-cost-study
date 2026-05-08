@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Public Database | Open Cost Study Exchange</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -21,17 +23,369 @@
 </header>
 
 <main class="container">
-  <h2>Download Public Benchmark Files</h2>
-  <p>
-    These files provide aggregate, privacy-protected benchmark data for public use.
-  </p>
 
-  <ul class="download-list">
-    <li><a href="downloads/sample-benchmarks.csv">Cost Benchmarks by CIP</a></li>
-    <li><a href="downloads/data-dictionary.csv">Data Dictionary</a></li>
-    <li><a href="downloads/public-quality-report.csv">Public Data Quality Report</a></li>
-  </ul>
+  <section>
+    <h2>Open Cost Study Public Database</h2>
+    <p>
+      This page provides public benchmark files generated from public institutional
+      submissions. The processed files include instructional cost per faculty member,
+      cost per credit hour, percentile benchmarks, and data quality information.
+    </p>
+  </section>
+
+  <section class="notice">
+    <h2>Public Data Notice</h2>
+    <p>
+      All files linked from this page are intended for public use. Institutions should
+      not submit student-level records, student names, student IDs, employee IDs,
+      Social Security numbers, dates of birth, protected personal information, or
+      any data that is not approved for public release.
+    </p>
+  </section>
+
+  <section>
+    <h2>Processed Public Database Files</h2>
+    <p>
+      These files are generated automatically from public raw submissions when the
+      GitHub Actions database workflow runs.
+    </p>
+
+    <ul class="download-list">
+      <li>
+        <a href="data/processed/benchmark-database.csv">
+          Benchmark Database CSV
+        </a>
+        — aggregate benchmark statistics by year, CIP code, and Carnegie classification
+      </li>
+
+      <li>
+        <a href="data/processed/public-institution-metrics.csv">
+          Public Institution Metrics CSV
+        </a>
+        — public institution-level calculated metrics
+      </li>
+
+      <li>
+        <a href="data/processed/data-quality-report.csv">
+          Data Quality Report CSV
+        </a>
+        — row counts and validation summary by source file
+      </li>
+
+      <li>
+        <a href="data/processed/benchmark-database.json">
+          Benchmark Database JSON
+        </a>
+        — machine-readable benchmark database used by the report generator
+      </li>
+
+      <li>
+        <a href="data/processed/public-institution-metrics.json">
+          Public Institution Metrics JSON
+        </a>
+        — machine-readable institution metrics used for percentile calculations
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Documentation and Templates</h2>
+    <p>
+      Use these files to prepare, interpret, and submit public cost study data.
+    </p>
+
+    <ul class="download-list">
+      <li>
+        <a href="data/metadata/submission-template.csv">
+          Public Submission Template
+        </a>
+      </li>
+
+      <li>
+        <a href="downloads/data-dictionary.csv">
+          Data Dictionary
+        </a>
+      </li>
+
+      <li>
+        <a href="downloads/public-quality-report.csv">
+          Public Quality Report
+        </a>
+      </li>
+
+      <li>
+        <a href="downloads/sample-benchmarks.csv">
+          Sample Benchmark File
+        </a>
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Generate a PDF Report</h2>
+    <p>
+      Use the report generator to enter a CIP code, Carnegie classification, and
+      department values. The report includes instructional cost per faculty member,
+      cost per credit hour, percentiles, and the number of institutions in the
+      comparison group.
+    </p>
+
+    <a class="button" href="report.html">Generate Report</a>
+  </section>
+
+  <section>
+    <h2>Search Public Benchmarks</h2>
+    <p>
+      Search the processed benchmark database by reporting year, CIP code, CIP title,
+      or Carnegie classification.
+    </p>
+
+    <div class="form-panel">
+      <label for="benchmarkSearch">Search benchmarks</label>
+      <input
+        id="benchmarkSearch"
+        type="text"
+        placeholder="Example: 26.0101, Biology, Doctoral Universities"
+        oninput="filterBenchmarkTable()"
+      />
+    </div>
+
+    <div id="benchmarkStatus" class="small-note">
+      Loading benchmark database...
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table class="report-table" id="benchmarkTable">
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>CIP Code</th>
+            <th>CIP Title</th>
+            <th>Carnegie Classification</th>
+            <th>Institutions</th>
+            <th>Median Cost per Faculty</th>
+            <th>Median Cost per Credit Hour</th>
+          </tr>
+        </thead>
+        <tbody id="benchmarkTableBody">
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Data Quality Summary</h2>
+    <p>
+      This summary shows how many rows were found in each public raw submission file
+      and how many rows were valid for metric calculations.
+    </p>
+
+    <div id="qualityStatus" class="small-note">
+      Loading data quality report...
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table class="report-table" id="qualityTable">
+        <thead>
+          <tr>
+            <th>Source File</th>
+            <th>Total Rows</th>
+            <th>Valid Metric Rows</th>
+            <th>Invalid Metric Rows</th>
+          </tr>
+        </thead>
+        <tbody id="qualityTableBody">
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Raw Public Submissions</h2>
+    <p>
+      Raw public submissions are stored in the repository under <code>data/raw/</code>.
+      Add each institution's public CSV file to the appropriate reporting-year folder.
+    </p>
+
+    <ul class="download-list">
+      <li>
+        <a href="data/raw/2026/sample-cost-submission.csv">
+          Sample 2026 Public Cost Submission
+        </a>
+      </li>
+    </ul>
+  </section>
+
 </main>
+
+<script>
+let benchmarkRows = [];
+let filteredBenchmarkRows = [];
+let qualityRows = [];
+
+function formatCurrency(value) {
+  const number = Number(value);
+
+  if (Number.isNaN(number)) {
+    return "Not available";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  }).format(number);
+}
+
+function normalizeText(value) {
+  return String(value || "").toLowerCase().trim();
+}
+
+async function loadBenchmarkDatabase() {
+  const status = document.getElementById("benchmarkStatus");
+  const tableBody = document.getElementById("benchmarkTableBody");
+
+  try {
+    const response = await fetch("data/processed/benchmark-database.json");
+
+    if (!response.ok) {
+      throw new Error("Benchmark database file not found.");
+    }
+
+    benchmarkRows = await response.json();
+    filteredBenchmarkRows = benchmarkRows;
+
+    renderBenchmarkTable(filteredBenchmarkRows);
+
+    status.textContent = `Loaded ${benchmarkRows.length} benchmark rows.`;
+  } catch (error) {
+    status.innerHTML = `
+      Benchmark database could not be loaded. Run the GitHub Actions workflow
+      named <strong>Build public benchmark database</strong>, then refresh this page.
+    `;
+
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7">
+          No processed benchmark data is available yet.
+        </td>
+      </tr>
+    `;
+  }
+}
+
+function renderBenchmarkTable(rows) {
+  const tableBody = document.getElementById("benchmarkTableBody");
+
+  if (!rows.length) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="7">
+          No benchmark rows match the current search.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tableBody.innerHTML = rows.map(row => {
+    return `
+      <tr>
+        <td>${row.year || ""}</td>
+        <td>${row.cip_code || ""}</td>
+        <td>${row.cip_title || ""}</td>
+        <td>${row.carnegie_classification || ""}</td>
+        <td>${row.n_institutions || ""}</td>
+        <td>${formatCurrency(row.median_instructional_cost_per_faculty)}</td>
+        <td>${formatCurrency(row.median_cost_per_credit_hour)}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function filterBenchmarkTable() {
+  const searchValue = normalizeText(
+    document.getElementById("benchmarkSearch").value
+  );
+
+  if (!searchValue) {
+    filteredBenchmarkRows = benchmarkRows;
+  } else {
+    filteredBenchmarkRows = benchmarkRows.filter(row => {
+      const combinedText = normalizeText([
+        row.year,
+        row.cip_code,
+        row.cip_title,
+        row.carnegie_classification
+      ].join(" "));
+
+      return combinedText.includes(searchValue);
+    });
+  }
+
+  renderBenchmarkTable(filteredBenchmarkRows);
+
+  document.getElementById("benchmarkStatus").textContent =
+    `Showing ${filteredBenchmarkRows.length} of ${benchmarkRows.length} benchmark rows.`;
+}
+
+async function loadQualityReport() {
+  const status = document.getElementById("qualityStatus");
+  const tableBody = document.getElementById("qualityTableBody");
+
+  try {
+    const response = await fetch("data/processed/data-quality-report.json");
+
+    if (!response.ok) {
+      throw new Error("Data quality report file not found.");
+    }
+
+    qualityRows = await response.json();
+
+    if (!qualityRows.length) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="4">
+            No data quality rows are available.
+          </td>
+        </tr>
+      `;
+
+      status.textContent = "No data quality rows are available.";
+      return;
+    }
+
+    tableBody.innerHTML = qualityRows.map(row => {
+      return `
+        <tr>
+          <td>${row.source_file || ""}</td>
+          <td>${row.rows || 0}</td>
+          <td>${row.valid_metric_rows || 0}</td>
+          <td>${row.invalid_metric_rows || 0}</td>
+        </tr>
+      `;
+    }).join("");
+
+    status.textContent = `Loaded ${qualityRows.length} data quality rows.`;
+  } catch (error) {
+    status.innerHTML = `
+      Data quality report could not be loaded. Run the GitHub Actions workflow
+      named <strong>Build public benchmark database</strong>, then refresh this page.
+    `;
+
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="4">
+          No processed data quality report is available yet.
+        </td>
+      </tr>
+    `;
+  }
+}
+
+loadBenchmarkDatabase();
+loadQualityReport();
+</script>
 
 </body>
 </html>
