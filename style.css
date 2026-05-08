@@ -1,0 +1,115 @@
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.site-header {
+  background: #0f2f5f;
+  color: white;
+  padding: 24px 0;
+}
+
+.site-header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.site-header p {
+  margin: 8px 0 20px;
+  color: #dbeafe;
+}
+
+nav a {
+  color: white;
+  margin-right: 20px;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+.hero {
+  background: white;
+  padding: 64px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.hero h2 {
+  font-size: 44px;
+  line-height: 1.1;
+  max-width: 800px;
+}
+
+.hero p {
+  font-size: 20px;
+  max-width: 760px;
+  color: #475569;
+}
+
+.buttons {
+  margin-top: 28px;
+}
+
+.button {
+  display: inline-block;
+  background: #0f2f5f;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  margin-right: 12px;
+  font-weight: bold;
+}
+
+.button.secondary {
+  background: white;
+  color: #0f2f5f;
+  border: 1px solid #0f2f5f;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 36px;
+}
+
+.card {
+  background: white;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.card h3 {
+  margin-top: 0;
+}
+
+.download-list {
+  background: white;
+  padding: 24px 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.download-list a {
+  color: #0f2f5f;
+  font-weight: bold;
+}
+
+footer {
+  margin-top: 48px;
+  background: #0f172a;
+  color: white;
+}
